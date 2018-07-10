@@ -2,8 +2,12 @@
 
 algorithm maintaining, skill integration.
 
-**algo-impl-stash/**: algorithm implementations
+**algo-impl-stash/**: 
 
-**ll/**: collection of utilities, require std only
+algorithm implementations
+
+**ll/**: 
+
+collection of utilities, require std only
 
 
