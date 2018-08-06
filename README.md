@@ -1,13 +1,7 @@
 # pepper
 
-algorithm maintaining, skill integration.
+numerical optimization algorithm implementation, 
 
-**algo-impl-stash/**: 
+require *numpy* only
 
-algorithm implementations
-
-**ll/**: 
-
-collection of utilities, require std only
-
-
+main reference: *numberical optimization*
