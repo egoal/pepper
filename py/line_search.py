@@ -59,7 +59,7 @@ def backtracking_line_search(f, g, h, x0, alpha, rho, c, method='gradient'):
                 break
             else:
                 # decrease step length
-                a = p * rho
+                a = a * rho
 
     print('i: -1, f: {}, x: {}, '.format(
         fs[-1],
