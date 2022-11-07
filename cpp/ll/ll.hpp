@@ -66,6 +66,7 @@
 
 #define LL_IDENTITY [](auto &&x) { return x; }
 #define LL_GET_N(n) [](auto &&x) { return std::get<n>(x); }
+#define LL_GET(p) [](auto &&x) { return x.p; }
 #define LL_INVERSE(f) [&f](auto &&x) { return !f(x); }
 
 namespace ll {
@@ -149,12 +150,23 @@ template <typename F, typename G> auto compose(F f, G g) {
   };
 }
 
-template <typename Collection, typename UOP>
-auto mapf(UOP f, const Collection &c) {
-  std::vector<decltype(f(*c.begin()))> v;
+template <typename UOP, typename... T> auto apply(UOP f, T &... vals) {
+  return (f(vals) + ...);
+}
+
+template <typename Vec, typename Collection, typename UOP>
+Vec mapf(UOP f, const Collection &c) {
+  static_assert(
+      std::is_same_v<typename Vec::value_type, decltype(f(*c.begin()))>);
+  Vec v;
   v.reserve(c.size());
   std::transform(c.begin(), c.end(), std::back_inserter(v), f);
   return v;
+}
+
+template <typename Collection, typename UOP>
+auto mapf(UOP f, const Collection &c) {
+  return mapf<std::vector<decltype(f(*c.begin()))>, Collection, UOP>(f, c);
 }
 
 template <typename Collection, typename UOP> auto filter(UOP f, Collection &c) {
@@ -167,6 +179,29 @@ Collection filter(UOP f, Collection &&c) {
   static_assert(!std::is_const<Collection>::value);
   c.erase(std::remove_if(c.begin(), c.end(), LL_INVERSE(f)), c.end());
   return c;
+}
+
+template <typename Container, typename UOP>
+auto ref_filter(UOP f, Container &c) {
+  std::vector<decltype(std::ref(c.front()))> re;
+  std::copy_if(c.begin(), c.end(), std::back_inserter(re), f);
+  return re;
+}
+
+template <typename Container, typename T> auto first(T val, Container &c) {
+  std::optional<decltype(std::ref(c.front()))> re;
+  auto it = std::find(c.begin(), c.end(), val);
+  if (it != c.end())
+    re = *it;
+  return re;
+}
+
+template <typename Container, typename UOP> auto first_of(UOP f, Container &c) {
+  std::optional<decltype(std::ref(c.front()))> re;
+  auto it = std::find_if(c.begin(), c.end(), f);
+  if (it != c.end())
+    re = *it;
+  return re;
 }
 
 template <typename T, typename Collection, typename BOP>
@@ -191,12 +226,15 @@ auto sum_by(UOP f, const Collection &c) -> decltype(f(*c.begin())) {
                          [&f](auto &&s, auto &&v) { return s + f(v); });
 }
 
-template <typename Vec, typename CC, typename C = typename CC::value_type>
-void concat_to(Vec &re, const CC &collections) {
-  if (collections.empty())
-    return;
+template <typename Vec, typename CC> Vec concat(const CC &collections) {
+  using C = typename CC::value_type;
+  static_assert(
+      std::is_same_v<typename Vec::value_type, typename C::value_type>);
 
-  re.clear();
+  Vec re;
+  if (collections.empty())
+    return re;
+
   re.reserve(ll::sum_by([](const C &c) { return c.size(); }, collections));
 
   re = ll::fold(
@@ -205,13 +243,12 @@ void concat_to(Vec &re, const CC &collections) {
         return sum;
       },
       re, collections);
+  return re;
 }
 
-template <typename CC, typename T = typename CC::value_type::value_type>
-std::vector<T> concat(const CC &collections) {
-  std::vector<T> re;
-  concat_to(re, collections);
-  return re;
+template <typename CC> auto concat(const CC &collections) {
+  using T = typename CC::value_type::value_type;
+  return concat<std::vector<T>, CC>(collections);
 }
 
 template <typename IT, typename BOP>
@@ -250,6 +287,26 @@ template <typename Container, typename UOP>
 std::vector<Container> group_by(const Container &c, UOP f) {
   return ll::mapf([](auto &&pr) { return Container(pr.first, pr.second); },
                   ll::group_by(c.begin(), c.end(), f));
+}
+
+template <typename IT> IT unsorted_unique(IT beg, IT end) {
+  auto cur = __next(beg);
+  for (auto it = cur; it != end; ++it)
+    if (std::find(beg, cur, *it) == cur)
+      *cur++ = *it;
+
+  return cur;
+}
+
+template <typename IT, typename BOP>
+IT unsorted_unique(IT beg, IT end, BOP fn) {
+  auto cur = __next(beg);
+  for (auto it = cur; it != end; ++it)
+    if (std::find_if(beg, cur,
+                     [it, &fn](auto &&other) { return fn(*it, other); }) == cur)
+      *cur++ = *it;
+
+  return cur;
 }
 
 // numeric range vector
@@ -373,6 +430,8 @@ public:
   iterator end() const { return iterator(end1_, end2_); }
 
   std::size_t size() const { return std::distance(beg1_, end1_); }
+
+  bool empty() const { return size() == 0; }
 };
 
 template <typename IT1, typename IT2>
@@ -678,18 +737,6 @@ public:
 private:
   std::unordered_map<std::string, std::string> umapData_;
 };
-
-// no cache used, for very light use
-template <typename T>
-inline T getNumberFrom(const std::string &filename, const std::string &keyname,
-                       T defval = T(0)) {
-  return ConfigParser(filename).getNumber<T>(keyname, defval);
-}
-inline std::string getStringFrom(const std::string &filename,
-                                 const std::string &keyname,
-                                 const std::string &defval = "") {
-  return ConfigParser(filename).getString(keyname, defval);
-}
 
 // simple binary map
 template <typename K, typename V> class bimap {

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "ll.hpp"
-#include <ceres/ceres.h>
+#include "Eigen/Dense"
+#include "ceres/ceres.h"
 
 namespace Eigen {
 template <typename T, typename Alloc = Eigen::aligned_allocator<T>>
@@ -13,6 +14,8 @@ namespace opt {
 class InformedCostFunction : public ceres::CostFunction {
  public:
   InformedCostFunction(ceres::CostFunction *fun, const Eigen::MatrixXd &info);
+  ~InformedCostFunction();
+
   bool Evaluate(double const *const *parameters, double *residuals,
                 double **jacobians) const;
 
@@ -171,7 +174,10 @@ class Optimizer : public ceres::IterationCallback {
         ceres::LinearSolverType::SPARSE_NORMAL_CHOLESKY;
     return Execute(options);
   }
-  bool Execute(ceres::Solver::Options options);
+  bool Execute(ceres::Solver::Options options, bool print = true);
+
+  std::size_t Params() const { return params_.size(); }
+  std::size_t Funs() const { return funs_.size(); }
 
  private:
   std::vector<double *> allocated_;
@@ -190,7 +196,7 @@ class Optimizer : public ceres::IterationCallback {
 
   bool Build(ceres::Solver::Options &options);
   void PreSolve();
-  bool Solve(const ceres::Solver::Options &options);
+  bool Solve(const ceres::Solver::Options &options, bool print = true);
   void PostSolve(const ceres::Solver::Summary &summary);
   ceres::CallbackReturnType operator()(const ceres::IterationSummary &summary);
   std::unordered_map<int, double> CalcCostOfEachGroups() const;

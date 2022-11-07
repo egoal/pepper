@@ -8,7 +8,7 @@ namespace da {
 
 template <typename T = double> T mean(const std::vector<T> &vals) {
   CHECK(vals.size() > 0);
-  return std::accumulate(vals.begin(), vals.end(), T(0)) / vals.size();
+  return ll::sum(vals)/ static_cast<T> (vals.size());
 }
 
 template <typename T = double>
@@ -86,6 +86,50 @@ match_bf(int maxidx0, int maxidx1, BOP bop, bool crossCheck = false) {
   }
 
   return matches;
+}
+
+template<typename T, typename U>
+std::vector<Match> match_bruteforce(const std::vector<T> &srcs, const std::vector<T> &dsts,
+                                    std::function<U (T, T)> scorefun)
+{
+  assert(!srcs.empty() && !dsts.empty());
+
+  std::map<T, std::pair<T, U>> matches; // { dst: (src, score) }
+
+  for (auto &src : srcs)
+  {
+    auto [dst, score] = ll::min_by([&src, &scorefun](const T &dst)
+                                   { return scorefun(src, dst); },
+                                   dsts);
+    auto it = matches.find(dst);
+    if (it == matches.end())
+      matches[dst] = std::pair(src, score);
+    else if (it->second.second > score)
+      it->second = std::pair(src, score);
+  }
+
+  return ll::mapf([](auto &&pr)
+                  {
+    Match m;
+    m.dst = pr.first;
+    m.src = pr.second.first;
+    m.score = pr.second.second;
+    return m; },
+                  matches)
+}
+
+using T = int;
+
+void ransec(std::vector<T> allpoints, std::function<std::vector<T> (const std::vector<T>&) > sampler, 
+  ){
+  // 
+  for(int i;;++i){
+    // random sample
+
+    // calc model
+
+    // evaluate model
+  }
 }
 
 } // namespace da
