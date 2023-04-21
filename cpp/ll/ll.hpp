@@ -289,6 +289,33 @@ std::vector<Container> group_by(const Container &c, UOP f) {
                   ll::group_by(c.begin(), c.end(), f));
 }
 
+template <typename IT> auto commonest(IT beg, IT end) {
+  using T = std::decay_t<decltype(*beg)>;
+  std::unordered_map<T, int> m;
+  for (; beg != end; ++beg)
+    m[*beg]++;
+
+  return *ll::max_by(LL_GET_N(1), m).first;
+}
+
+template <typename IT, typename UOP> auto commonest_of(IT beg, IT end, UOP f) {
+  using T = std::decay_t<decltype(f(*beg))>;
+  std::unordered_map<T, int> m;
+  for (; beg != end; ++beg)
+    m[f(*beg)]++;
+
+  return *ll::max_by(LL_GET_N(1), m).first;
+}
+
+template <typename Collection> auto commonest(const Collection &c) {
+  return commonest(c.begin(), c.end());
+}
+
+template <typename Collection, typename UOP>
+auto commonest_of(UOP f, const Collection &c) {
+  return commonest_of(c.begin(), c.end(), f);
+}
+
 template <typename IT> IT unsorted_unique(IT beg, IT end) {
   auto cur = __next(beg);
   for (auto it = cur; it != end; ++it)

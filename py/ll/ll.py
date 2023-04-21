@@ -124,11 +124,14 @@ def unique_match(src, dst, mfun):
 def identity(x): return x
 
 
-def use_logging(logfile: str = None):
+def use_logging(level, to_std=True, logfile: str = None):
     import logging
-    if logfile is None:
-        logging.basicConfig(
-            level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] [%(levelname)s] %(message)s')
-    else:
-        logging.basicConfig(logfile=logfile, filemode='w',
-                            level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] [%(levelname)s] %(message)s')
+
+    handlers = []
+    if to_std:
+        handlers.append(logging.StreamHandler())
+    if logfile:
+        handlers.append(logging.FileHandler(logfile, "w"))
+    logging.basicConfig(level=level,
+                        format="%(asctime)s [%(filename)s:%(lineno)d] [%(levelname)s] %(message)s",
+                        handlers=handlers)
