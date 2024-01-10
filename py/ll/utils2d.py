@@ -1,9 +1,10 @@
+from typing import Tuple
 import numpy as np
 import scipy.linalg as la
 from . import ll
 
 
-def distance_to(p, s, e):
+def distance_to(p, s, e) -> Tuple[float, float]:
     '''
     @return (dis, t): foot = lerp(s, e, t)
     '''
@@ -18,13 +19,13 @@ def distance_to(p, s, e):
     return (dis, t)
 
 
-def distance_to_line(p, line):
+def distance_to_line(p, line) -> Tuple[float, float]:
     '''
     @param line: (N, 2)
     @return (dis, t): [0, N-1]
     '''
 
-    i = np.argmin(np.sum((line - p) ** 2, axis=1))
+    i: int = np.argmin(np.sum((line - p) ** 2, axis=1))
 
     lam, distance = i, la.norm(line[i, :] - p)
 
@@ -40,6 +41,17 @@ def distance_to_line(p, line):
             lam = i + t
 
     return (distance, lam)
+
+
+def foot_on_line(p, line) -> np.ndarray | None:
+    '''
+    @param line (N, 2)
+    @return maybe (2,)
+    '''
+    _, lam = distance_to_line(p, line)
+    if lam > 0 and lam < len(line)-1:
+        i, d = int(lam), lam - int(lam)
+        return line[i] * (1-d) + line[i+1] * d
 
 
 def intersect_segment(s1, e1, s2, e2):
@@ -73,4 +85,4 @@ def intersect_line(s, e, line: np.ndarray):
         else:
             return None
 
-    return list(filter(ll.identity, map(intersect_at, range(line.shape[0]-1))))
+    return list(filter(ll.not_none, map(intersect_at, range(line.shape[0]-1))))

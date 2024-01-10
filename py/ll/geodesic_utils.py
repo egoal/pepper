@@ -78,7 +78,7 @@ def wgs2gcj(lng, lat):
     input & return `lng`, `lat` in degrees
     note that `lng` and `lat` can be vector
     '''
-    assert in_china(lng, lat), 'not in china'
+    # assert in_china(lng, lat), 'not in china'
     return _transform(lng, lat)
 
 

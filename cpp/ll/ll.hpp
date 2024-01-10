@@ -336,6 +336,22 @@ IT unsorted_unique(IT beg, IT end, BOP fn) {
   return cur;
 }
 
+///
+///@brief ONLY the `bool` return of `fn` would be judged, to break the iteration
+///
+template <typename Collection, typename UOP> auto each(UOP fn, Collection &c) {
+  using T = decltype(fn(*c.begin()));
+  if constexpr (std::is_same_v<T, bool>) {
+    for (auto &e : c)
+      if (fn(e))
+        break;
+  } else {
+    if constexpr (!std::is_same_v<T, void>)
+      LL_LOG_F("ll::each, return type IGNORED: %s.\n", typeid(T).name());
+    std::for_each(std::begin(c), std::end(c), fn);
+  }
+}
+
 // numeric range vector
 template <typename T> class Range {
 public:
