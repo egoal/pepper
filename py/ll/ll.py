@@ -3,6 +3,7 @@ import os
 import itertools as it
 from functools import cache, partial, reduce
 from typing import Any, Callable, Generator, Iterable, List, Tuple, TypeVar, Dict
+from types import FunctionType
 
 T, U = TypeVar('T'), TypeVar('U')
 
@@ -30,6 +31,13 @@ def partial_tail(mf, *params, **kw):
     '''
     def f(o): return mf(o, *params, **kw)
     return f
+
+
+def F(statement, params='x', tag='f'):
+    '''simple eval function'''
+    code = f"def {tag}({','.join(params)}): return {statement}"
+    obj = compile(code, 'F', 'exec')
+    return FunctionType(obj.co_consts[0], globals())
 
 
 def enum_lines(file: str):

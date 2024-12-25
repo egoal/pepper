@@ -2,6 +2,8 @@ from typing import Tuple
 import numpy as np
 import scipy.linalg as la
 from . import ll
+from . import calc
+from functools import reduce
 
 
 def distance_to(p, s, e) -> Tuple[float, float]:
@@ -86,3 +88,59 @@ def intersect_line(s, e, line: np.ndarray):
             return None
 
     return list(filter(ll.not_none, map(intersect_at, range(line.shape[0]-1))))
+
+
+def range_valid(r): return r[0] <= r[1]
+
+
+def range_intersect(r1, r2): return (max(r1[0], r2[0]), min(r1[1], r2[1]))
+
+
+def overlap_circle(center, radius, s, e) -> Tuple[float, float]:
+    dis, t = distance_to(center, s, e)
+    if abs(dis) > radius or t < 0 or t > 1:
+        return (np.inf, -np.inf)
+
+    l = la.norm(e - s)
+    dt = (radius ** 2 - dis ** 2) ** .5 / l
+
+    return (t - dt, t + dt)
+
+
+def overlap_line(s1, e1, s2, e2) -> Tuple[float, float]:
+    se1 = e1 - s1
+    ds, de = np.cross(se1, s2 - s1), np.cross(se1, e2 - s1)
+
+    if abs(de - ds) < 1e-6:
+        if de >= 0.:
+            return (-np.inf, np.inf)
+        else:
+            return (np.inf, -np.inf)
+    t = (0 - ds) / (de - ds)
+
+    if ds < de:
+        return (t, np.inf)
+    else:
+        return (-np.inf, t)
+
+
+def overlap_convex(polygon, s, e) -> Tuple[float, float]:
+    # todo: can be optimized.
+    return reduce(range_intersect, map(lambda x: overlap_line(x[0], x[1], s, e), ll.adjacent(polygon)))
+
+
+def overlap_capsule(s, e, radius, p1, p2):
+    t1 = overlap_circle(s, radius, p1, p2)
+
+    n = calc.normalized(e - s)
+    pn = np.array([-n[1], n[0]]) * radius
+
+    rect = np.array([s - pn, e - pn, e + pn, s + pn, s - pn])
+
+    t2 = overlap_convex(rect, p1, p2)
+    t3 = overlap_circle(e, radius, p1, p2)
+
+    def __union(r1, r2): return (min(r1[0], r2[0]), max(r1[1], r2[1]))
+
+    return reduce(__union, [t1, t2, t3])
+

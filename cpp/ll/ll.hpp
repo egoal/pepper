@@ -36,28 +36,26 @@
 #include <stdarg.h>
 
 // macros
-#define LL_BAN_COPY(X)                                                         \
-  X(const X &) = delete;                                                       \
+#define LL_BAN_COPY(X)   \
+  X(const X &) = delete; \
   X &operator=(const X &) = delete
 
 #define LL_ABORT(...) throw std::runtime_error(__VA_ARGS__)
-#define LL_ASSERT(...)                                                         \
-  if (!(__VA_ARGS__))                                                          \
-  LL_ABORT(#__VA_ARGS__)
+#define LL_ASSERT(...) \
+  if (!(__VA_ARGS__)) LL_ABORT(#__VA_ARGS__)
 
 #define __FILENAME__ ll::__current_filename(__FILE__)
 #define LL_LOG std::cerr << "[" << __FILENAME__ << ": " << __LINE__ << "] "
-#define LL_LOG_F(str, ...)                                                     \
-  {                                                                            \
-    std::sprintf(ll::__logchar_mem__, str, __VA_ARGS__);                       \
-    LL_LOG << ll::__logchar_mem__;                                             \
+#define LL_LOG_F(str, ...)                               \
+  {                                                      \
+    std::sprintf(ll::__logchar_mem__, str, __VA_ARGS__); \
+    LL_LOG << ll::__logchar_mem__;                       \
   }
 
-#define LL_NOTNULL(x)                                                          \
-  {                                                                            \
-    if (!x)                                                                    \
-      LL_ABORT("null check failed: " #x);                                      \
-  }                                                                            \
+#define LL_NOTNULL(x)                           \
+  {                                             \
+    if (!x) LL_ABORT("null check failed: " #x); \
+  }                                             \
   x
 
 #define LL_ABS(x) ((x) > 0 ? (x) : (-x))
@@ -65,8 +63,9 @@
 #define LL_REPEAT(n) for (int __i__ = 0; __i__ < n; ++__i__)
 
 #define LL_IDENTITY [](auto &&x) { return x; }
+#define LL_Fx(expr) ([&](auto &&x) { return expr; })
+#define LL_Fxy(expr) ([&](auto &&x, auto &&y) { return expr; })
 #define LL_GET_N(n) [](auto &&x) { return std::get<n>(x); }
-#define LL_GET(p) [](auto &&x) { return x.p; }
 #define LL_INVERSE(f) [&f](auto &&x) { return !f(x); }
 
 namespace ll {
@@ -75,16 +74,19 @@ inline std::string __current_filename(const std::string &file) {
   return file.substr(pos == std::string::npos ? 0 : pos + 1);
 }
 
-template <typename T = double> constexpr T pi = M_PI;
+template <typename T = double>
+constexpr T pi = M_PI;
 
-template <typename T> constexpr T degrees(T r) {
+template <typename T>
+constexpr T degrees(T r) {
   return r / ll::pi<T> * T(180.);
 }
-template <typename T> constexpr T radians(T d) {
+template <typename T>
+constexpr T radians(T d) {
   return d / T(180.) * ll::pi<T>;
 }
 
-static char __logchar_mem__[1024]; // memory for LL_LOG_F
+static char __logchar_mem__[1024];  // memory for LL_LOG_F
 
 inline std::string unsafe_format(const char *fmt, ...) {
   va_list ap;
@@ -103,33 +105,37 @@ std::unique_ptr<T> make_unique(Args &&... args) {
 }
 #endif
 
-template <typename T> T clamp(T val, T low, T high) {
+template <typename T>
+T clamp(T val, T low, T high) {
   assert(low <= high && "bad arguments");
-  if (val < low)
-    return low;
-  if (val > high)
-    return high;
+  if (val < low) return low;
+  if (val > high) return high;
   return val;
 }
 
-template <typename T> T rand(T maxval) {
+template <typename T>
+T rand(T maxval) {
   return T(std::rand() / double(RAND_MAX) * maxval);
 }
-template <typename T> T randrange(T minval, T maxval) {
+template <typename T>
+T randrange(T minval, T maxval) {
   return T(std::rand() / double(RAND_MAX) * (maxval - minval)) + minval;
 }
 
 //* tuple print
-template <typename Tuple, std::size_t N> struct __tuple_printer {
+template <typename Tuple, std::size_t N>
+struct __tuple_printer {
   static void print(const Tuple &t, std::ostream &os) {
     __tuple_printer<Tuple, N - 1>::print(t, os);
     os << ", " << std::get<N - 1>(t);
   }
 };
-template <typename Tuple> struct __tuple_printer<Tuple, 1> {
+template <typename Tuple>
+struct __tuple_printer<Tuple, 1> {
   static void print(const Tuple &t, std::ostream &os) { os << std::get<0>(t); }
 };
-template <typename... Args> auto to_string(const std::tuple<Args...> &t) {
+template <typename... Args>
+auto to_string(const std::tuple<Args...> &t) {
   std::stringstream ss;
   ss << "(";
   __tuple_printer<decltype(t), sizeof...(Args)>::print(t, ss);
@@ -137,21 +143,63 @@ template <typename... Args> auto to_string(const std::tuple<Args...> &t) {
   return ss.str();
 }
 
+template <class... Fs>
+struct overload : Fs... {
+  using Fs::operator()...;
+};
+
+template <class... Fs>
+overload(Fs...)->overload<Fs...>;
+
 // todo: fixme
-template <typename T> T __next(T t) {
+template <typename T>
+T __next(T t) {
   ++t;
   return t;
 }
 
 // @return f \cir g
-template <typename F, typename G> auto compose(F f, G g) {
+template <typename F, typename G>
+auto compose(F f, G g) {
   return [f, g](auto &&... args) {
     return f(g(std::forward<decltype(args)>(args)...));
   };
 }
 
-template <typename UOP, typename... T> auto apply(UOP f, T &... vals) {
+/// @brief
+/// @tparam UOP a::addable
+/// @return
+template <typename UOP, typename... T>
+auto apply(UOP f, T &... vals) {
   return (f(vals) + ...);
+}
+
+template <typename UOP, typename T>
+inline auto fmap(UOP f, std::optional<T> opt)
+    -> std::optional<decltype(f(std::declval<T>()))> {
+  if (opt) return f(*opt);
+  return std::nullopt;
+}
+
+template <typename F>
+inline auto lift(F f) {
+  return [f](auto &&x) { return fmap(f, x); };
+}
+
+///
+///@brief ONLY the `bool` return of `fn` would be judged, to break the iteration
+///
+template <typename Collection, typename UOP>
+auto each(UOP fn, Collection &&c) {
+  using T = decltype(fn(*c.begin()));
+  if constexpr (std::is_same_v<T, bool>) {
+    for (auto &e : c)
+      if (fn(e)) break;
+  } else {
+    if constexpr (!std::is_same_v<T, void>)
+      LL_LOG_F("ll::each, return type IGNORED: %s.\n", typeid(T).name());
+    std::for_each(std::begin(c), std::end(c), fn);
+  }
 }
 
 template <typename Vec, typename Collection, typename UOP>
@@ -169,7 +217,8 @@ auto mapf(UOP f, const Collection &c) {
   return mapf<std::vector<decltype(f(*c.begin()))>, Collection, UOP>(f, c);
 }
 
-template <typename Collection, typename UOP> auto filter(UOP f, Collection &c) {
+template <typename Collection, typename UOP>
+auto filter(UOP f, Collection &c) {
   std::remove_const_t<Collection> re;
   std::copy_if(c.begin(), c.end(), std::inserter(re, re.end()), f);
   return re;
@@ -188,19 +237,19 @@ auto ref_filter(UOP f, Container &c) {
   return re;
 }
 
-template <typename Container, typename T> auto first(T val, Container &c) {
+template <typename Container, typename T>
+auto first(T val, Container &c) {
   std::optional<decltype(std::ref(c.front()))> re;
   auto it = std::find(c.begin(), c.end(), val);
-  if (it != c.end())
-    re = *it;
+  if (it != c.end()) re = *it;
   return re;
 }
 
-template <typename Container, typename UOP> auto first_of(UOP f, Container &c) {
+template <typename Container, typename UOP>
+auto first_of(UOP f, Container &c) {
   std::optional<decltype(std::ref(c.front()))> re;
   auto it = std::find_if(c.begin(), c.end(), f);
-  if (it != c.end())
-    re = *it;
+  if (it != c.end()) re = *it;
   return re;
 }
 
@@ -209,8 +258,8 @@ T fold(BOP f, T init, const Collection &c) {
   return std::accumulate(c.begin(), c.end(), init, f);
 }
 
-template <typename T, typename Collection, typename BOP>
-T reduce(BOP f, const Collection &c) {
+template <typename Collection, typename BOP>
+auto reduce(BOP f, const Collection &c) {
   return std::accumulate(__next(c.begin()), c.end(), *c.begin(), f);
 }
 
@@ -226,14 +275,14 @@ auto sum_by(UOP f, const Collection &c) -> decltype(f(*c.begin())) {
                          [&f](auto &&s, auto &&v) { return s + f(v); });
 }
 
-template <typename Vec, typename CC> Vec concat(const CC &collections) {
+template <typename Vec, typename CC>
+Vec concat(const CC &collections) {
   using C = typename CC::value_type;
   static_assert(
       std::is_same_v<typename Vec::value_type, typename C::value_type>);
 
   Vec re;
-  if (collections.empty())
-    return re;
+  if (collections.empty()) return re;
 
   re.reserve(ll::sum_by([](const C &c) { return c.size(); }, collections));
 
@@ -246,7 +295,8 @@ template <typename Vec, typename CC> Vec concat(const CC &collections) {
   return re;
 }
 
-template <typename CC> auto concat(const CC &collections) {
+template <typename CC>
+auto concat(const CC &collections) {
   using T = typename CC::value_type::value_type;
   return concat<std::vector<T>, CC>(collections);
 }
@@ -289,44 +339,21 @@ std::vector<Container> group_by(const Container &c, UOP f) {
                   ll::group_by(c.begin(), c.end(), f));
 }
 
-template <typename IT> auto commonest(IT beg, IT end) {
-  using T = std::decay_t<decltype(*beg)>;
-  std::unordered_map<T, int> m;
-  for (; beg != end; ++beg)
-    m[*beg]++;
+template <typename IT>
+IT unsorted_unique(IT beg, IT end) {
+  if (beg == end) return beg;
 
-  return *ll::max_by(LL_GET_N(1), m).first;
-}
-
-template <typename IT, typename UOP> auto commonest_of(IT beg, IT end, UOP f) {
-  using T = std::decay_t<decltype(f(*beg))>;
-  std::unordered_map<T, int> m;
-  for (; beg != end; ++beg)
-    m[f(*beg)]++;
-
-  return *ll::max_by(LL_GET_N(1), m).first;
-}
-
-template <typename Collection> auto commonest(const Collection &c) {
-  return commonest(c.begin(), c.end());
-}
-
-template <typename Collection, typename UOP>
-auto commonest_of(UOP f, const Collection &c) {
-  return commonest_of(c.begin(), c.end(), f);
-}
-
-template <typename IT> IT unsorted_unique(IT beg, IT end) {
   auto cur = __next(beg);
   for (auto it = cur; it != end; ++it)
-    if (std::find(beg, cur, *it) == cur)
-      *cur++ = *it;
+    if (std::find(beg, cur, *it) == cur) *cur++ = *it;
 
   return cur;
 }
 
 template <typename IT, typename BOP>
 IT unsorted_unique(IT beg, IT end, BOP fn) {
+  if (beg == end) return beg;
+
   auto cur = __next(beg);
   for (auto it = cur; it != end; ++it)
     if (std::find_if(beg, cur,
@@ -336,25 +363,10 @@ IT unsorted_unique(IT beg, IT end, BOP fn) {
   return cur;
 }
 
-///
-///@brief ONLY the `bool` return of `fn` would be judged, to break the iteration
-///
-template <typename Collection, typename UOP> auto each(UOP fn, Collection &c) {
-  using T = decltype(fn(*c.begin()));
-  if constexpr (std::is_same_v<T, bool>) {
-    for (auto &e : c)
-      if (fn(e))
-        break;
-  } else {
-    if constexpr (!std::is_same_v<T, void>)
-      LL_LOG_F("ll::each, return type IGNORED: %s.\n", typeid(T).name());
-    std::for_each(std::begin(c), std::end(c), fn);
-  }
-}
-
 // numeric range vector
-template <typename T> class Range {
-public:
+template <typename T>
+class Range {
+ public:
   using value_type = T;
 
   Range(T beg, T end, T step) : beg_(beg), end_(end), step_(step) {}
@@ -377,12 +389,16 @@ public:
 
   std::vector<T> vec() const { return ll::mapf(LL_IDENTITY, *this); }
 
-private:
+ private:
   T beg_, end_, step_;
 };
 
-template <typename T> Range<T> range(T e) { return Range<T>(0, e, 1); }
-template <typename T> Range<T> range(T s, T e, T d) {
+template <typename T>
+Range<T> range(T e) {
+  return Range<T>(0, e, 1);
+}
+template <typename T>
+Range<T> range(T s, T e, T d) {
   return Range<T>(s, e, d);
 }
 
@@ -421,6 +437,14 @@ auto min_by(UOP f, const Collection &c) {
   return std::make_pair(smallest, s);
 }
 
+template <typename Collection, typename UOP>
+std::vector<std::size_t> indices_where(UOP f, const Collection &c) {
+  std::vector<std::size_t> re;
+  for (auto [i, v] : with_index(c))
+    if (f(v)) re.emplace_back(i);
+  return re;
+}
+
 template <typename Collection, typename BOP>
 std::vector<std::size_t> sort_indices(BOP f, const Collection &c) {
   auto indices = range(c.size()).vec();
@@ -437,21 +461,22 @@ std::vector<std::size_t> sort_indices(const Collection &f) {
   return indices;
 }
 
-template <typename IT1, typename IT2> class Zip {
+template <typename IT1, typename IT2>
+class Zip {
   IT1 beg1_, end1_;
   IT2 beg2_, end2_;
 
   using T1 = decltype(*beg1_);
   using T2 = decltype(*beg2_);
 
-public:
+ public:
   Zip(IT1 beg1, IT1 end1, IT2 beg2, IT2 end2)
       : beg1_(beg1), end1_(end1), beg2_(beg2), end2_(end2) {}
 
   using value_type = std::pair<T1, T2>;
 
   class iterator {
-  public:
+   public:
     using difference_type = std::ptrdiff_t;
     iterator(IT1 it1, IT2 it2) : it1_(it1), it2_(it2) {}
 
@@ -464,7 +489,7 @@ public:
     }
     value_type operator*() { return {*it1_, *it2_}; }
 
-  private:
+   private:
     IT1 it1_;
     IT2 it2_;
   };
@@ -482,67 +507,25 @@ Zip<IT1, IT2> zip(IT1 beg1, IT1 end1, IT2 beg2, IT2 end2) {
   return Zip<IT1, IT2>(beg1, end1, beg2, end2);
 }
 
-template <typename C1, typename C2> auto zip(C1 &&c1, C2 &&c2) {
+template <typename C1, typename C2>
+auto zip(C1 &&c1, C2 &&c2) {
   return Zip<decltype(c1.begin()), decltype(c2.begin())>(c1.begin(), c1.end(),
                                                          c2.begin(), c2.end());
 }
 
-template <typename C> auto adjacent(C &&c) {
+template <typename C>
+auto adjacent(C &&c) {
   return ll::zip(c.begin(), std::prev(c.end()), __next(c.begin()), c.end());
 }
 
-template <typename IT> class IndexedRange {
-public:
-  IndexedRange(IT beg, IT end) : beg_(beg), end_(end) {}
-
-  struct value_type {
-    value_type(std::size_t i, IT it) : index(i), iter(it) {}
-    std::size_t index;
-    IT iter;
-  };
-
-  class iterator {
-  public:
-    iterator(std::size_t i, IT it) : idx_(i), it_(it) {}
-
-    bool operator!=(const iterator &other) const {
-      return idx_ != other.idx_ || it_ != other.it_;
-    }
-
-    iterator operator++() {
-      ++idx_;
-      ++it_;
-      return *this;
-    }
-
-    value_type operator*() { return value_type(idx_, it_); }
-
-  private:
-    std::size_t idx_;
-    IT it_;
-  };
-
-  iterator begin() { return iterator(0, beg_); }
-  iterator end() { return iterator(size(), end_); }
-
-  std::size_t size() const { return std::distance(beg_, end_); }
-
-private:
-  IT beg_, end_;
-};
-
-template <typename Collection>
-[[deprecated("should prefer ll::with_index")]] auto enumerate(Collection &&c) {
-  return IndexedRange<decltype(c.begin())>(c.begin(), c.end());
-}
-
-template <typename IT> class IndexEnumerator {
+template <typename IT>
+class IndexEnumerator {
   IT beg_, end_;
   std::size_t i_{0};
 
   using T = decltype(*beg_);
 
-public:
+ public:
   IndexEnumerator(IT beg, IT end) : beg_(beg), end_(end) {}
 
   struct value_type {
@@ -566,7 +549,8 @@ public:
   bool empty() const { return size() == 0; }
 };
 
-template <typename Collection> auto with_index(Collection &&c) {
+template <typename Collection>
+auto with_index(Collection &&c) {
   return IndexEnumerator(std::begin(c), std::end(c));
 }
 
@@ -577,14 +561,12 @@ std::vector<std::string> string_split(const std::string &str, UOP uop) {
   int s(0), i(0);
   while (i < static_cast<int>(str.size())) {
     if (uop(str[i])) {
-      if (s < i)
-        vecStrs.push_back(str.substr(s, i - s));
+      if (s < i) vecStrs.push_back(str.substr(s, i - s));
       s = i + 1;
     }
     ++i;
   }
-  if (s < i)
-    vecStrs.push_back(str.substr(s, i));
+  if (s < i) vecStrs.push_back(str.substr(s, i));
 
   return vecStrs;
 }
@@ -594,39 +576,35 @@ inline std::vector<std::string> string_split<char>(const std::string &str,
   return string_split(str, [&](char tc) { return tc == c; });
 }
 template <>
-inline std::vector<std::string>
-string_split<std::string>(const std::string &str, std::string s) {
+inline std::vector<std::string> string_split<std::string>(
+    const std::string &str, std::string s) {
   return string_split(str,
                       [&](char c) { return s.find(c) != std::string::npos; });
 }
 template <>
-inline std::vector<std::string>
-string_split<const char *>(const std::string &str, const char *ps) {
+inline std::vector<std::string> string_split<const char *>(
+    const std::string &str, const char *ps) {
   return string_split(str, std::string(ps));
 }
 
 template <typename Collection>
 std::string string_join(const Collection &c, const std::string &split = " ") {
-  if (c.empty())
-    return "";
+  if (c.empty()) return "";
   std::stringstream ss;
   auto iter = c.begin();
   ss << (*iter);
-  for (++iter; iter != c.end(); ++iter)
-    ss << split << (*iter);
+  for (++iter; iter != c.end(); ++iter) ss << split << (*iter);
   return ss.str();
 }
 
 // string_join(mapf(f, c), split)
 template <typename Collection, typename UOP>
 std::string string_join(UOP f, const Collection &c, const std::string &split) {
-  if (c.empty())
-    return "";
+  if (c.empty()) return "";
   std::stringstream ss;
   auto iter = c.begin();
   ss << f(*iter);
-  for (++iter; iter != c.end(); ++iter)
-    ss << split << f(*iter);
+  for (++iter; iter != c.end(); ++iter) ss << split << f(*iter);
   return ss.str();
 }
 
@@ -642,7 +620,7 @@ inline std::string &string_strip(std::string &str) {
 
 /* simple time counter */
 class TimeCounter {
-public:
+ public:
   TimeCounter(std::function<void(uint64_t)> ontoc = nullptr) : ontoc_(ontoc) {
     reset();
   }
@@ -660,27 +638,24 @@ public:
         .count();
   }
 
-private:
+ private:
   decltype(std::chrono::high_resolution_clock::now()) start_;
   std::function<void(int)> ontoc_;
 };
 
 /* file config*/
-// parser for my style
 class ConfigParser {
-public:
+ public:
   ConfigParser(const std::string &filename) { reload(filename); }
   LL_BAN_COPY(ConfigParser);
 
   bool reload(const std::string &filename) {
     std::ifstream fin(filename.c_str());
-    if (!fin.is_open())
-      return false;
+    if (!fin.is_open()) return false;
     std::string line, key, e, val;
     while (std::getline(fin, line)) {
       line = line.substr(0, line.find(';'));
-      if (line.empty())
-        continue;
+      if (line.empty()) continue;
 
       std::stringstream ssin(line);
       ssin >> key >> e;
@@ -689,8 +664,7 @@ public:
       // strip
       string_strip(val);
 
-      if (!val.empty())
-        umapData_.insert({key, val});
+      if (!val.empty()) umapData_.insert({key, val});
     }
     return true;
   }
@@ -709,11 +683,9 @@ public:
 
   bool getBoolean(const std::string &key, bool defval = false) {
     auto str = getString(key, "");
-    if (str.empty())
-      return defval;
+    if (str.empty()) return defval;
     try {
-      if (str == "false" || std::stoi(str) == 0)
-        return false;
+      if (str == "false" || std::stoi(str) == 0) return false;
       return true;
     } catch (std::exception &e) {
       return true;
@@ -752,19 +724,16 @@ public:
     return save(filename, headers,
                 std::unordered_map<std::string, std::string>());
   }
-  bool
-  save(const std::string &filename, const std::string &headers,
-       const std::unordered_map<std::string, std::string> &umapValDesc) const {
+  bool save(
+      const std::string &filename, const std::string &headers,
+      const std::unordered_map<std::string, std::string> &umapValDesc) const {
     std::ofstream fout(filename);
-    if (!fout.is_open())
-      return false;
+    if (!fout.is_open()) return false;
     // todo: headers may contain new lines
-    if (!headers.empty())
-      fout << headers << "\n";
+    if (!headers.empty()) fout << headers << "\n";
     for (const auto &pr : umapData_) {
       auto iter = umapValDesc.find(pr.first);
-      if (iter != umapValDesc.end())
-        fout << "# " << iter->second << "\n";
+      if (iter != umapValDesc.end()) fout << "# " << iter->second << "\n";
       fout << pr.first << "\t=\t" << pr.second << "\n";
     }
 
@@ -777,16 +746,16 @@ public:
       os << pr.first << "\t=\t" << pr.second << "\n";
   }
 
-private:
+ private:
   std::unordered_map<std::string, std::string> umapData_;
 };
 
 // simple binary map
-template <typename K, typename V> class bimap {
-public:
+template <typename K, typename V>
+class bimap {
+ public:
   bool insert(const K &k, const V &v) {
-    if (left_.count(k) || right_.count(v))
-      return false;
+    if (left_.count(k) || right_.count(v)) return false;
     left_[k] = v;
     right_[v] = k;
 
@@ -814,14 +783,15 @@ public:
   const std::map<K, V> &left() const { return left_; }
   const std::map<V, K> &right() const { return right_; }
 
-private:
+ private:
   std::map<K, V> left_;
   std::map<V, K> right_;
 };
 
 // simple unique priority queue
-template <typename T> class unique_priority_queue {
-public:
+template <typename T>
+class unique_priority_queue {
+ public:
   bool push(const T &t) {
     if (set_.insert(t).second) {
       queue_.push(t);
@@ -844,24 +814,23 @@ public:
 
   bool empty() const { return queue_.empty(); }
 
-private:
+ private:
   std::priority_queue<T> queue_;
   std::set<T> set_;
 };
 
 // simple array2d
-template <typename T> class array2d {
-public:
+template <typename T>
+class array2d {
+ public:
   array2d(int rows, int cols) : rows_(rows), cols_(cols) {
     data_ = new T[rows * cols];
   }
   array2d(int rows, int cols, T defval) : array2d(rows, cols) {
-    for (int i = 0; i < rows * cols; ++i)
-      data_[i] = defval;
+    for (int i = 0; i < rows * cols; ++i) data_[i] = defval;
   }
   ~array2d() {
-    if (data_)
-      delete[] data_;
+    if (data_) delete[] data_;
   }
 
   int rows() const { return rows_; }
@@ -873,8 +842,8 @@ public:
   T &at(int r, int c) { return data[r * cols_ + c]; }
   const T &at(int r, int c) const { return data[r * cols_ + c]; }
 
-private:
+ private:
   T *data_{nullptr};
   int rows_, cols_;
 };
-} // namespace ll
+}  // namespace ll
