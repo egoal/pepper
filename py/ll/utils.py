@@ -7,9 +7,9 @@ def load_json(file: str):
     return data
 
 
-def make_json(jsonfile: str, data):
+def make_json(jsonfile: str, data, *, indent=None):
     with open(jsonfile, 'w') as fout:
-        json.dump(data, fout, indent=4)
+        json.dump(data, fout, indent=indent)
     return jsonfile
 
 

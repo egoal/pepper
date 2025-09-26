@@ -1,2 +1,4 @@
 .vscode/
 a.cpp
+**/__pycache__/
+**/*.egg-info/

@@ -4,6 +4,9 @@ import math
 import numpy as np
 
 
+EARCH_RADIUS = 6378137.0  # semi-major axis
+
+
 def in_china(lng, lat):
     return lng > 73.66 and lng < 135.05 and lat > 3.86 and lat < 53.55
 
@@ -231,3 +234,14 @@ def lla2enu(lla: np.ndarray, anchor):
     x, y, z = lla2xyz(lla[:, 0], lla[:, 1], lla[:, 2])
     return xyz2enu(np.hstack((x, y, z)), anchor)
 
+
+def anchor_from_ecef(x, y, z):
+    T_anchor_to_ecef = np.eye(4)
+    T_anchor_to_ecef[:3, 3] = [x, y, z]
+    lon, lat, _ = xyz2lla(x, y, z)
+    T_anchor_to_ecef[:3, :3] = ll2Rne(lon, lat)
+    return T_anchor_to_ecef
+
+
+def anchor_from_lla(lon, lat, alt=0):
+    return anchor_from_ecef(*lla2xyz(lon, lat, alt))
